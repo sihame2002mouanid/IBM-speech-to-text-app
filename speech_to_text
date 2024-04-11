@@ -1,0 +1,91 @@
+import tkinter as tk
+from tkinter import filedialog
+from ibm_watson import TextToSpeechV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from pydub import AudioSegment
+import os
+import platform
+import pygame
+
+class TextToSpeechGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Text to Speech Conversion")
+        self.root.configure(bg="#edf7f2")  # Spring background color
+
+        # Upper frame with a button to convert text to speech
+        self.record_frame = tk.Frame(self.root, bg="#edf7f2")
+        self.record_frame.pack(pady=20)
+
+        # Variable to track recording state
+        self.recording = False  
+
+        self.record_button = tk.Button(self.record_frame, text="Convert Text to Speech", command=self.convert_text_to_speech, bg="#003366", fg="white", padx=10, pady=5, font=("Helvetica", 12))
+        self.record_button.pack(side=tk.LEFT, padx=20)
+
+        # Language selection dropdown menu
+        self.language_label = tk.Label(self.root, text="Select Language:", bg="#edf7f2", font=("Helvetica", 12))
+        self.language_label.pack()
+        self.selected_language = tk.StringVar()
+        self.selected_language.set("fr-FR_ReneeV3Voice")  # Default to French
+        self.language_options = {
+            "English (US)": "en-US_AllisonV3Voice",
+            "French": "fr-FR_ReneeV3Voice",
+            "Arabic": "ar-MS_OmarVoice",
+            "Spanish": "es-ES_EnriqueV3Voice"
+            # Add more languages here as needed
+        }
+        self.language_dropdown = tk.OptionMenu(self.root, self.selected_language, *self.language_options.keys())
+        self.language_dropdown.pack()
+
+        # Lower frame with text entry box
+        self.text_entry = tk.Text(self.root, height=10, width=50, bg="#b3d9ff", fg="#000000", font=("Helvetica", 14, "bold"))
+        self.text_entry.pack(pady=20)
+
+        # Audio playback frame
+        self.audio_frame = tk.Frame(self.root, bg="#edf7f2")
+        self.audio_frame.pack(pady=20)
+
+        self.play_button = tk.Button(self.audio_frame, text="Play Audio", command=self.play_audio, bg="#003366", fg="white", padx=10, pady=5, font=("Helvetica", 12))
+        self.play_button.pack(side=tk.LEFT, padx=20)
+
+        self.stop_button = tk.Button(self.audio_frame, text="Stop Audio", command=self.stop_audio, bg="#003366", fg="white", padx=10, pady=5, font=("Helvetica", 12))
+        self.stop_button.pack(side=tk.LEFT)
+
+        # IBM Watson Text to Speech API configuration
+        apiUrl = "https://api.au-syd.text-to-speech.watson.cloud.ibm.com/instances/474df056-a011-4d47-949d-89ce8dcad4c5"
+        myKey = "gxe8JabFkqkEGrLhfgOXRylHF3WkyDxXoKGRNT7t7M8z"
+        auth = IAMAuthenticator(myKey)
+        self.text_to_speech = TextToSpeechV1(authenticator=auth)
+        self.text_to_speech.set_service_url(apiUrl)
+
+    def convert_text_to_speech(self):
+        # Convert text to speech
+        text = self.text_entry.get(1.0, tk.END)
+        selected_language_voice = self.language_options[self.selected_language.get()]
+        response = self.text_to_speech.synthesize(text=text, accept='audio/wav', voice=selected_language_voice).get_result()
+        audio_data = response.content
+        with open("output.wav", "wb") as output_file:
+            output_file.write(audio_data)
+        self.audio = AudioSegment.from_wav("output.wav")
+
+    def play_audio(self):
+        if hasattr(self, 'audio'):
+            export_file = os.path.join(os.path.dirname(__file__), "output.wav")
+            self.audio.export(export_file, format="wav")
+
+            # Initialize pygame mixer
+            pygame.mixer.init()
+            # Load the audio file
+            pygame.mixer.music.load(export_file)
+            # Play the audio
+            pygame.mixer.music.play()
+
+    def stop_audio(self):
+        # Stop the audio playback
+        pygame.mixer.music.stop()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = TextToSpeechGUI(root)
+    root.mainloop()
