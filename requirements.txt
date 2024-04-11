@@ -1,0 +1,4 @@
+ibm-watson
+numpy
+scipy
+sounddevice
